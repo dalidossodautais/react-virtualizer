@@ -2,16 +2,49 @@ import { styled } from "@mui/system";
 import { CSSProperties, Children, FC, ReactElement, useCallback, useEffect, useMemo, useRef } from "react";
 
 interface VirtualizedGridProps {
+  /**
+   * The content of the component.
+   */
   children: ReactElement[];
+  /**
+   * Override or extend the styles applied to the component.
+   */
   className?: string;
+  /**
+   * The number of columns on each row.
+   */
   columnCount: number;
+  /**
+   * The spacing between columns.
+   */
   columnSpacing?: string;
+  /**
+   * The width of columns.
+   */
   columnWidth?: string;
+  /**
+   * The total height of the component.
+   */
   height?: string;
+  /**
+   * The spacing between rows.
+   */
   rowSpacing?: string;
+  /**
+   * The height of rows.
+   */
   rowHeight: string;
+  /**
+   * The style of the inner wrapper.
+   */
   spacing?: string;
+  /**
+   * The spacing between columns and rows.
+   */
   style?: CSSProperties;
+  /**
+   * The total width of the component.
+   */
   width?: string;
 }
 
