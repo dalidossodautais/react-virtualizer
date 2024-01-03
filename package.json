@@ -1,8 +1,9 @@
 {
   "name": "@dalidossodautais/react-virtualizer",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "author": "dalidossodautais",
   "license": "ISC",
+  "description": "React components for virtualization handling.",
   "keywords": [
     "react",
     "virtualizer",
