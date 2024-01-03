@@ -83,6 +83,7 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   width,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const wasErrorShown = useRef<boolean>(false);
 
   const rowCount = useMemo(() => Math.ceil(Children.count(children) / columnCount), [children, columnCount]);
 
@@ -98,6 +99,10 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
       const childrenArray = Array.from(wrapperRefCurrent.children);
       const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
       const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
+      if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
+        console.error(new Error("Invalid dimensions: Height and/or width are 0."));
+        wasErrorShown.current = true;
+      }
       const { clientHeight: calculatedRowHeight } = fakeChild;
       let { clientWidth: calculatedColumnWidth } = fakeChild;
       const { clientHeight: calculatedRowSpacing, clientWidth: calculatedColumnSpacing } = fakeSpacing;

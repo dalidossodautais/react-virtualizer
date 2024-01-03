@@ -65,6 +65,7 @@ const VirtualizedStack: FC<VirtualizedStackProps> = ({
   width,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const wasErrorShown = useRef<boolean>(false);
 
   const rowCount = useMemo(() => Children.count(children), [children]);
 
@@ -75,7 +76,11 @@ const VirtualizedStack: FC<VirtualizedStackProps> = ({
     if (wrapperRefCurrent) {
       const childrenArray = Array.from(wrapperRefCurrent.children);
       const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
-      const { clientHeight: calculatedWrapperHeight } = wrapperRefCurrent;
+      const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
+      if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
+        console.error(new Error("Invalid dimensions: Height and/or width are 0."));
+        wasErrorShown.current = true;
+      }
       const { clientHeight: calculatedRowHeight } = fakeChild;
       const { clientHeight: calculatedRowSpacing } = fakeSpacing;
       childrenArray.forEach((child: any, index) => {
