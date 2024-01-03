@@ -1,11 +1,12 @@
 {
   "name": "@dalidossodautais/react-virtualizer",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "author": "dalidossodautais",
   "license": "ISC",
   "description": "React components for virtualization handling.",
   "keywords": [
     "react",
+    "typescript",
     "virtualizer",
     "virtualized",
     "grid",
