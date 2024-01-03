@@ -1,8 +1,16 @@
 {
   "name": "@dalidossodautais/react-virtualizer",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "author": "dalidossodautais",
   "license": "ISC",
+  "keywords": [
+    "react",
+    "virtualizer",
+    "virtualized",
+    "grid",
+    "list",
+    "optimisation"
+  ],
   "devDependencies": {
     "@mui/system": "^5.15.2",
     "@types/react": "^18.2.45",
