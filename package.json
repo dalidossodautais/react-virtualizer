@@ -13,19 +13,25 @@
     "list",
     "optimisation"
   ],
+  "dependencies": {
+    "@emotion/styled": "^11.11.0"
+  },
   "devDependencies": {
-    "@mui/system": "^5.15.2",
-    "@types/react": "^18.2.45",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "typescript": "^4.9.5"
+    "@storybook/addon-essentials": "^7.6.7",
+    "@storybook/addon-interactions": "^7.6.7",
+    "@storybook/addon-links": "^7.6.7",
+    "@storybook/addon-onboarding": "^1.0.10",
+    "@storybook/blocks": "^7.6.7",
+    "@storybook/react": "^7.6.7",
+    "@storybook/react-vite": "^7.6.7",
+    "@storybook/test": "^7.6.7",
+    "storybook": "^7.6.7"
   },
   "peerDependencies": {
-    "@mui/system": "^5.15.2",
+    "@emotion/styled": "^11.11.0",
     "@types/react": "^18.2.45",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "typescript": "^4.9.5"
+    "react-dom": "^18.2.0"
   },
   "browserslist": {
     "production": [
@@ -39,5 +45,9 @@
       "last 1 safari version"
     ]
   },
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  }
 }

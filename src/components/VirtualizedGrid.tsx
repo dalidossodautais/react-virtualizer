@@ -1,4 +1,4 @@
-import { styled } from "@mui/system";
+import styled from "@emotion/styled";
 import { CSSProperties, Children, FC, ReactElement, useCallback, useEffect, useMemo, useRef } from "react";
 
 interface VirtualizedGridProps {
@@ -152,22 +152,24 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   }, [children, showChild]);
 
   return (
-    <OuterWrapper style={{ height, width }}>
-      <InnerWrapper className={className} ref={wrapperRef} style={style}>
+    <OuterWrapper style={{ height, width }} data-testid="outer-wrapper">
+      <InnerWrapper className={className} ref={wrapperRef} style={style} data-testid="inner-wrapper">
         {Children.map(children, (child, index) => (
           <ChildWrapper
+            hidden
             style={{
               height: rowHeight,
               left: `calc(${getColumn(index)} * (${columnWidth} + ${columnSpacing}))`,
               top: `calc(${getRow(index)} * (${rowHeight} + ${rowSpacing}))`,
               width: columnWidth,
             }}
+            data-testid={`child-wrapper-${index}`}
           >
             {child}
           </ChildWrapper>
         ))}
-        <FakeElement style={{ height: rowHeight, width: columnWidth }} />
-        <FakeElement style={{ height: rowSpacing, width: columnSpacing }} />
+        <FakeElement style={{ height: rowHeight, width: columnWidth }} data-testid="fake-wrapper" />
+        <FakeElement style={{ height: rowSpacing, width: columnSpacing }} data-testid="fake-spacing" />
         <FakeElement
           style={{
             height: `calc(${rowHeight} * ${rowCount} + ${rowSpacing} * ${rowCount - 1})`,
@@ -175,6 +177,7 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
               ? `calc(${columnWidth} * ${columnCount} + ${columnSpacing} * ${columnCount - 1})`
               : "100%",
           }}
+          data-testid="fake-child"
         />
       </InnerWrapper>
     </OuterWrapper>
@@ -192,4 +195,5 @@ VirtualizedGrid.defaultProps = {
   width: undefined,
 };
 
+export type { VirtualizedGridProps };
 export default VirtualizedGrid;

@@ -1,4 +1,4 @@
-import { styled } from "@mui/system";
+import styled from "@emotion/styled";
 import { CSSProperties, Children, FC, ReactElement, useCallback, useEffect, useMemo, useRef } from "react";
 
 interface VirtualizedStackProps {
@@ -108,16 +108,22 @@ const VirtualizedStack: FC<VirtualizedStackProps> = ({
   }, [resizeObserver, showChild]);
 
   return (
-    <OuterWrapper style={{ height, width }}>
-      <InnerWrapper className={className} ref={wrapperRef} style={style}>
+    <OuterWrapper style={{ height, width }} data-testid="outer-wrapper">
+      <InnerWrapper className={className} ref={wrapperRef} style={style} data-testid="inner-wrapper">
         {Children.map(children, (child, index) => (
-          <ChildWrapper style={{ height: rowHeight, top: `calc(${index} * (${rowHeight} + ${rowSpacing}))` }}>
+          <ChildWrapper
+            style={{ height: rowHeight, top: `calc(${index} * (${rowHeight} + ${rowSpacing}))` }}
+            data-testid={`child-wrapper-${index}`}
+          >
             {child}
           </ChildWrapper>
         ))}
-        <FakeElement style={{ height: rowHeight }} />
-        <FakeElement style={{ height: rowSpacing }} />
-        <FakeElement style={{ height: `calc(${rowHeight} * ${rowCount} + ${rowSpacing} * ${rowCount - 1})` }} />
+        <FakeElement style={{ height: rowHeight }} data-testid="fake-wrapper" />
+        <FakeElement style={{ height: rowSpacing }} data-testid="fake-spacing" />
+        <FakeElement
+          style={{ height: `calc(${rowHeight} * ${rowCount} + ${rowSpacing} * ${rowCount - 1})` }}
+          data-testid="fake-child"
+        />
       </InnerWrapper>
     </OuterWrapper>
   );
@@ -131,4 +137,5 @@ VirtualizedStack.defaultProps = {
   width: undefined,
 };
 
+export type { VirtualizedStackProps };
 export default VirtualizedStack;
