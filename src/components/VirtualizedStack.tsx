@@ -72,39 +72,33 @@ const VirtualizedStack: FC<VirtualizedStackProps> = ({
   const rowSpacing = useMemo(() => spacing ?? "0px", [spacing]);
 
   const showChild = useCallback(() => {
-    const wrapperRefCurrent = wrapperRef.current;
-    if (wrapperRefCurrent) {
-      const childrenArray = Array.from(wrapperRefCurrent.children);
-      const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
-      const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
-      if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
-        console.error(new Error("Invalid dimensions: Height and/or width are 0."));
-        wasErrorShown.current = true;
-      }
-      const { clientHeight: calculatedRowHeight } = fakeChild;
-      const { clientHeight: calculatedRowSpacing } = fakeSpacing;
-      childrenArray.forEach((child: any, index) => {
-        child.hidden =
-          wrapperRefCurrent.scrollTop + calculatedWrapperHeight <=
-            index * (calculatedRowHeight + calculatedRowSpacing) ||
-          wrapperRefCurrent.scrollTop > index * (calculatedRowHeight + calculatedRowSpacing) + calculatedRowHeight;
-      });
+    const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
+    const childrenArray = Array.from(wrapperRefCurrent.children);
+    const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
+    const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
+    if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
+      console.error(new Error("Invalid dimensions: Height and/or width are 0."));
+      wasErrorShown.current = true;
     }
+    const { clientHeight: calculatedRowHeight } = fakeChild;
+    const { clientHeight: calculatedRowSpacing } = fakeSpacing;
+    childrenArray.forEach((child: any, index) => {
+      child.hidden =
+        wrapperRefCurrent.scrollTop + calculatedWrapperHeight <= index * (calculatedRowHeight + calculatedRowSpacing) ||
+        wrapperRefCurrent.scrollTop > index * (calculatedRowHeight + calculatedRowSpacing) + calculatedRowHeight;
+    });
   }, []);
 
   const resizeObserver = useMemo(() => new ResizeObserver(showChild), [showChild]);
 
   useEffect(() => {
-    const wrapperRefCurrent = wrapperRef.current;
-    if (wrapperRefCurrent) {
-      wrapperRefCurrent.addEventListener("scroll", showChild);
-      resizeObserver.observe(wrapperRefCurrent);
-      return () => {
-        wrapperRefCurrent.removeEventListener("scroll", showChild);
-        resizeObserver.unobserve(wrapperRefCurrent);
-      };
-    }
-    return () => null;
+    const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
+    wrapperRefCurrent.addEventListener("scroll", showChild);
+    resizeObserver.observe(wrapperRefCurrent);
+    return () => {
+      wrapperRefCurrent.removeEventListener("scroll", showChild);
+      resizeObserver.unobserve(wrapperRefCurrent);
+    };
   }, [resizeObserver, showChild]);
 
   return (

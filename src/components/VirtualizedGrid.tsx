@@ -94,57 +94,50 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   const getRow = useCallback((index: number) => Math.floor(index / columnCount), [columnCount]);
 
   const showChild = useCallback(() => {
-    const wrapperRefCurrent = wrapperRef.current;
-    if (wrapperRefCurrent) {
-      const childrenArray = Array.from(wrapperRefCurrent.children);
-      const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
-      const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
-      if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
-        console.error(new Error("Invalid dimensions: Height and/or width are 0."));
-        wasErrorShown.current = true;
-      }
-      const { clientHeight: calculatedRowHeight } = fakeChild;
-      let { clientWidth: calculatedColumnWidth } = fakeChild;
-      const { clientHeight: calculatedRowSpacing, clientWidth: calculatedColumnSpacing } = fakeSpacing;
-      calculatedColumnWidth = (calculatedWrapperWidth - (columnCount - 1) * calculatedColumnSpacing) / columnCount;
-      if (!columnWidth) {
-        childrenArray.forEach((child: any, index) => {
-          child.style.width = `${calculatedColumnWidth}px`;
-          child.style.left = `${getColumn(index) * (calculatedColumnWidth + calculatedRowSpacing)}px`;
-        });
-      }
+    const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
+    const childrenArray = Array.from(wrapperRefCurrent.children);
+    const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
+    const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
+    if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
+      console.error(new Error("Invalid dimensions: Height and/or width are 0."));
+      wasErrorShown.current = true;
+    }
+    const { clientHeight: calculatedRowHeight } = fakeChild;
+    let { clientWidth: calculatedColumnWidth } = fakeChild;
+    const { clientHeight: calculatedRowSpacing, clientWidth: calculatedColumnSpacing } = fakeSpacing;
+    calculatedColumnWidth = (calculatedWrapperWidth - (columnCount - 1) * calculatedColumnSpacing) / columnCount;
+    if (!columnWidth) {
       childrenArray.forEach((child: any, index) => {
-        child.hidden =
-          wrapperRefCurrent.scrollLeft + calculatedWrapperWidth <=
-            getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing) ||
-          wrapperRefCurrent.scrollLeft >
-            getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing) + calculatedColumnWidth ||
-          wrapperRefCurrent.scrollTop + calculatedWrapperHeight <=
-            getRow(index) * (calculatedRowHeight + calculatedRowSpacing) ||
-          wrapperRefCurrent.scrollTop >
-            getRow(index) * (calculatedRowHeight + calculatedRowSpacing) + calculatedRowHeight;
-        if (!columnWidth) {
-          child.style.width = `${
-            (calculatedWrapperWidth - (columnCount - 1) * calculatedColumnSpacing) / columnCount
-          }px`;
-        }
+        child.style.width = `${calculatedColumnWidth}px`;
+        child.style.left = `${getColumn(index) * (calculatedColumnWidth + calculatedRowSpacing)}px`;
       });
     }
+    childrenArray.forEach((child: any, index) => {
+      child.hidden =
+        wrapperRefCurrent.scrollLeft + calculatedWrapperWidth <=
+          getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing) ||
+        wrapperRefCurrent.scrollLeft >
+          getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing) + calculatedColumnWidth ||
+        wrapperRefCurrent.scrollTop + calculatedWrapperHeight <=
+          getRow(index) * (calculatedRowHeight + calculatedRowSpacing) ||
+        wrapperRefCurrent.scrollTop >
+          getRow(index) * (calculatedRowHeight + calculatedRowSpacing) + calculatedRowHeight;
+      if (!columnWidth) {
+        child.style.width = `${(calculatedWrapperWidth - (columnCount - 1) * calculatedColumnSpacing) / columnCount}px`;
+      }
+    });
   }, [columnCount, columnWidth, getColumn, getRow]);
 
-  const resizeObserver = useMemo(() => new ResizeObserver(showChild), [showChild]);
+  const resizeObserver = useMemo((): ResizeObserver => new ResizeObserver(showChild), [showChild]);
 
   useEffect(() => {
-    const wrapperRefCurrent = wrapperRef.current;
-    if (wrapperRefCurrent) {
-      wrapperRefCurrent.addEventListener("scroll", showChild);
-      resizeObserver.observe(wrapperRefCurrent);
-      return () => {
-        wrapperRefCurrent.removeEventListener("scroll", showChild);
-        resizeObserver.unobserve(wrapperRefCurrent);
-      };
-    }
-    return () => null;
+    const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
+    wrapperRefCurrent.addEventListener("scroll", showChild);
+    resizeObserver.observe(wrapperRefCurrent);
+    return () => {
+      wrapperRefCurrent.removeEventListener("scroll", showChild);
+      resizeObserver.unobserve(wrapperRefCurrent);
+    };
   }, [resizeObserver, showChild]);
 
   useEffect(() => {
