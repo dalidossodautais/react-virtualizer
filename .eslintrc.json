@@ -1,0 +1,28 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": ["airbnb", "airbnb/hooks", "airbnb-typescript", "plugin:import/recommended", "prettier"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "project": ["./tsconfig.json"],
+    "sourceType": "module"
+  },
+  "plugins": ["@stylistic", "prettier/recommended", "sort-keys-fix"],
+  "rules": {
+    "import/order": [
+      "error",
+      {
+        "alphabetize": { "order": "asc" },
+        "groups": ["builtin", "external", "internal", ["parent", "sibling", "index"]],
+        "newlines-between": "always"
+      }
+    ],
+    "no-console": ["error", { "allow": ["error"] }],
+    "react/function-component-definition": ["off"],
+    "react/jsx-sort-props": ["error"],
+    "react/react-in-jsx-scope": ["off"],
+    "sort-keys-fix/sort-keys-fix": ["error"]
+  }
+}

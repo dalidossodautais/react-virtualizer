@@ -1,11 +1,15 @@
 import styled from "@emotion/styled";
-import { CSSProperties, Children, FC, ReactElement, useCallback, useEffect, useMemo, useRef } from "react";
+import { CSSProperties, FC, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+
+interface VirtualizedGridChildProps {
+  index: number;
+}
 
 interface VirtualizedGridProps {
   /**
-   * The content of the component.
+   * Child component.
    */
-  children: ReactElement[];
+  Child: FC<VirtualizedGridChildProps>;
   /**
    * Override or extend the styles applied to the component.
    */
@@ -27,6 +31,22 @@ interface VirtualizedGridProps {
    */
   height?: string;
   /**
+   * Maximum number of rows.
+   */
+  maxRowPrintedCount?: number;
+  /**
+   * Minimum number of rows.
+   */
+  minRowPrintedCount?: number;
+  /**
+   * Reduce number of loads.
+   */
+  optimized?: boolean;
+  /**
+   * Number of rows.
+   */
+  rowPrintedCount?: number;
+  /**
    * The spacing between rows.
    */
   rowSpacing?: string;
@@ -34,6 +54,10 @@ interface VirtualizedGridProps {
    * The height of rows.
    */
   rowHeight: string;
+  /**
+   * The number of children.
+   */
+  size: number;
   /**
    * The style of the inner wrapper.
    */
@@ -70,22 +94,43 @@ const FakeElement = styled("div")({
 });
 
 const VirtualizedGrid: FC<VirtualizedGridProps> = ({
-  children,
+  Child,
   className,
   columnCount,
   columnSpacing: rawColumnSpacing,
   columnWidth,
   height,
-  rowSpacing: rawRowSpacing,
+  maxRowPrintedCount,
+  minRowPrintedCount,
+  optimized,
   rowHeight,
+  rowPrintedCount,
+  rowSpacing: rawRowSpacing,
+  size,
   spacing,
   style,
   width,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const fakeChildRef = useRef<HTMLDivElement>(null);
+  const fakeSpacingRef = useRef<HTMLDivElement>(null);
+
   const wasErrorShown = useRef<boolean>(false);
 
-  const rowCount = useMemo(() => Math.ceil(Children.count(children) / columnCount), [children, columnCount]);
+  const [, startTransition] = useTransition();
+
+  const [overflowY, setOverflowY] = useState<"hidden" | undefined>(undefined);
+  const [overflowX, setOverflowX] = useState<"hidden" | undefined>(undefined);
+  const [calculatedWrapperHeight, setCalculatedWrapperHeight] = useState<number>(0);
+  const [calculatedWrapperWidth, setCalculatedWrapperWidth] = useState<number>(0);
+  const [calculatedRowHeight, setCalculatedRowHeight] = useState<number>(0);
+  const [calculatedColumnWidth, setCalculatedColumnWidth] = useState<number>(0);
+  const [calculatedRowSpacing, setCalculatedRowSpacing] = useState<number>(0);
+  const [calculatedColumnSpacing, setCalculatedColumnSpacing] = useState<number>(0);
+  const [scrollTop, setScrollTop] = useState<number>(0);
+  const [scrollLeft, setScrollLeft] = useState<number>(0);
+
+  const rowCount = useMemo(() => Math.ceil(size / columnCount), [columnCount, size]);
 
   const columnSpacing = useMemo(() => rawColumnSpacing ?? spacing ?? "0px", [rawColumnSpacing, spacing]);
   const rowSpacing = useMemo(() => rawRowSpacing ?? spacing ?? "0px", [rawRowSpacing, spacing]);
@@ -93,85 +138,157 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   const getColumn = useCallback((index: number) => index % columnCount, [columnCount]);
   const getRow = useCallback((index: number) => Math.floor(index / columnCount), [columnCount]);
 
-  const showChild = useCallback(() => {
-    const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
-    const childrenArray = Array.from(wrapperRefCurrent.children);
-    const [fakeChild, fakeSpacing] = childrenArray.splice(-3);
-    const { clientHeight: calculatedWrapperHeight, clientWidth: calculatedWrapperWidth } = wrapperRefCurrent;
-    if (!wasErrorShown.current && (!calculatedWrapperHeight || !calculatedWrapperWidth)) {
+  const children = useMemo(() => {
+    if (!calculatedWrapperHeight || !calculatedWrapperWidth) {
+      return null;
+    }
+    const startingX = Math.floor(
+      (scrollLeft + calculatedColumnSpacing) / (calculatedColumnWidth + calculatedColumnSpacing),
+    );
+    const startingY = Math.floor((scrollTop + calculatedRowSpacing) / (calculatedRowHeight + calculatedRowSpacing));
+    const endingX = Math.ceil(
+      (scrollLeft + calculatedWrapperWidth) / (calculatedColumnWidth + calculatedColumnSpacing),
+    );
+    const endingY = Math.ceil((scrollTop + calculatedWrapperHeight) / (calculatedRowHeight + calculatedRowSpacing));
+    return [...Array(endingY - startingY)].flatMap((_valueY, indexY) =>
+      [...Array(endingX - startingX)].map((_valueX, indexX) => {
+        const index = (startingY + indexY) * columnCount + (startingX + indexX);
+        return (
+          <ChildWrapper
+            key={index}
+            data-testid={`child-wrapper-${index}`}
+            style={{
+              height: calculatedRowHeight,
+              left: getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing),
+              top: getRow(index) * (calculatedRowHeight + calculatedRowSpacing),
+              width: calculatedColumnWidth,
+            }}
+          >
+            {index < size && <Child index={index} />}
+          </ChildWrapper>
+        );
+      }),
+    );
+  }, [
+    calculatedColumnSpacing,
+    calculatedColumnWidth,
+    calculatedRowHeight,
+    calculatedRowSpacing,
+    calculatedWrapperHeight,
+    calculatedWrapperWidth,
+    columnCount,
+    Child,
+    getColumn,
+    getRow,
+    scrollLeft,
+    scrollTop,
+    size,
+  ]);
+
+  const load = useCallback(() => {
+    const wrapperRefCurrent = wrapperRef.current as HTMLDivElement;
+    const fakeChildRefCurrent = fakeChildRef.current as HTMLDivElement;
+    const fakeSpacingRefCurrent = fakeSpacingRef.current as HTMLDivElement;
+    const newCalculatedWrapperHeight = wrapperRefCurrent.clientHeight;
+    const newCalculatedWrapperWidth = wrapperRefCurrent.clientWidth;
+    const newCalculatedRowSpacing = fakeSpacingRefCurrent.clientHeight;
+    const newCalculatedColumnSpacing = fakeSpacingRefCurrent.clientWidth;
+    const newCalculatedRowHeight = fakeChildRefCurrent.clientHeight;
+    const newCalculatedColumnWidth = columnWidth
+      ? fakeChildRefCurrent.clientWidth
+      : (newCalculatedWrapperWidth - (columnCount - 1) * newCalculatedColumnSpacing) / columnCount;
+    if (!wasErrorShown.current && (!newCalculatedWrapperHeight || !newCalculatedWrapperWidth)) {
       console.error(new Error("Invalid dimensions: Height and/or width are 0."));
       wasErrorShown.current = true;
     }
-    const { clientHeight: calculatedRowHeight } = fakeChild;
-    let { clientWidth: calculatedColumnWidth } = fakeChild;
-    const { clientHeight: calculatedRowSpacing, clientWidth: calculatedColumnSpacing } = fakeSpacing;
-    calculatedColumnWidth = (calculatedWrapperWidth - (columnCount - 1) * calculatedColumnSpacing) / columnCount;
-    if (!columnWidth) {
-      childrenArray.forEach((child: any, index) => {
-        child.style.width = `${calculatedColumnWidth}px`;
-        child.style.left = `${getColumn(index) * (calculatedColumnWidth + calculatedRowSpacing)}px`;
-      });
-    }
-    childrenArray.forEach((child: any, index) => {
-      child.hidden =
-        wrapperRefCurrent.scrollLeft + calculatedWrapperWidth <=
-          getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing) ||
-        wrapperRefCurrent.scrollLeft >
-          getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing) + calculatedColumnWidth ||
-        wrapperRefCurrent.scrollTop + calculatedWrapperHeight <=
-          getRow(index) * (calculatedRowHeight + calculatedRowSpacing) ||
-        wrapperRefCurrent.scrollTop >
-          getRow(index) * (calculatedRowHeight + calculatedRowSpacing) + calculatedRowHeight;
-      if (!columnWidth) {
-        child.style.width = `${(calculatedWrapperWidth - (columnCount - 1) * calculatedColumnSpacing) / columnCount}px`;
-      }
-    });
-  }, [columnCount, columnWidth, getColumn, getRow]);
+    setCalculatedWrapperHeight(newCalculatedWrapperHeight);
+    setCalculatedWrapperWidth(newCalculatedWrapperWidth);
+    setCalculatedRowHeight(newCalculatedRowHeight);
+    setCalculatedColumnWidth(newCalculatedColumnWidth);
+    setCalculatedRowSpacing(newCalculatedRowSpacing);
+    setCalculatedColumnSpacing(newCalculatedColumnSpacing);
+    setScrollTop(wrapperRefCurrent.scrollTop);
+    setScrollLeft(wrapperRefCurrent.scrollLeft);
+    setOverflowY(
+      newCalculatedRowHeight * rowCount + newCalculatedRowSpacing * (rowCount - 1) <= newCalculatedWrapperHeight
+        ? "hidden"
+        : undefined,
+    );
+    setOverflowX(
+      !columnWidth ||
+        newCalculatedColumnWidth * columnCount + newCalculatedColumnSpacing * (columnCount - 1) <=
+          newCalculatedWrapperWidth
+        ? "hidden"
+        : undefined,
+    );
+  }, [columnCount, columnWidth, rowCount]);
 
-  const resizeObserver = useMemo((): ResizeObserver => new ResizeObserver(showChild), [showChild]);
+  const loadOptimized = useCallback(() => {
+    if (optimized) {
+      startTransition(load);
+    } else {
+      load();
+    }
+  }, [load, optimized]);
+
+  const resizeObserver = useMemo(() => new ResizeObserver(loadOptimized), [loadOptimized]);
 
   useEffect(() => {
     const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
-    wrapperRefCurrent.addEventListener("scroll", showChild);
+    wrapperRefCurrent.addEventListener("scroll", loadOptimized);
     resizeObserver.observe(wrapperRefCurrent);
     return () => {
-      wrapperRefCurrent.removeEventListener("scroll", showChild);
+      wrapperRefCurrent.removeEventListener("scroll", loadOptimized);
       resizeObserver.unobserve(wrapperRefCurrent);
     };
-  }, [resizeObserver, showChild]);
+  }, [loadOptimized, resizeObserver]);
 
   useEffect(() => {
-    showChild();
-  }, [children, showChild]);
+    loadOptimized();
+  }, [loadOptimized]);
+
+  useEffect(() => {
+    const wrapperRefCurrent = wrapperRef.current as HTMLDivElement;
+    wrapperRefCurrent.scrollTop = 0;
+  }, [Child, size]);
 
   return (
-    <OuterWrapper style={{ height, width }} data-testid="outer-wrapper">
-      <InnerWrapper className={className} ref={wrapperRef} style={style} data-testid="inner-wrapper">
-        {Children.map(children, (child, index) => (
-          <ChildWrapper
-            hidden
-            style={{
-              height: rowHeight,
-              left: `calc(${getColumn(index)} * (${columnWidth} + ${columnSpacing}))`,
-              top: `calc(${getRow(index)} * (${rowHeight} + ${rowSpacing}))`,
-              width: columnWidth,
-            }}
-            data-testid={`child-wrapper-${index}`}
-          >
-            {child}
-          </ChildWrapper>
-        ))}
-        <FakeElement style={{ height: rowHeight, width: columnWidth }} data-testid="fake-wrapper" />
-        <FakeElement style={{ height: rowSpacing, width: columnSpacing }} data-testid="fake-spacing" />
+    <OuterWrapper data-testid="outer-wrapper" style={{ height, width }}>
+      <InnerWrapper
+        ref={wrapperRef}
+        className={className}
+        data-testid="inner-wrapper"
+        style={{
+          height: rowPrintedCount
+            ? `calc(${rowPrintedCount} * ${rowHeight} + ${rowPrintedCount - 1} * ${rowSpacing})`
+            : undefined,
+          maxHeight: maxRowPrintedCount
+            ? `calc(${maxRowPrintedCount} * ${rowHeight} + ${maxRowPrintedCount - 1} * ${rowSpacing})`
+            : undefined,
+          minHeight: minRowPrintedCount
+            ? `calc(${minRowPrintedCount} * ${rowHeight} + ${minRowPrintedCount - 1} * ${rowSpacing})`
+            : undefined,
+          overflowX,
+          overflowY,
+          ...style,
+        }}
+      >
         <FakeElement
+          data-testid="fake-wrapper"
           style={{
             height: `calc(${rowHeight} * ${rowCount} + ${rowSpacing} * ${rowCount - 1})`,
             width: columnWidth
               ? `calc(${columnWidth} * ${columnCount} + ${columnSpacing} * ${columnCount - 1})`
               : "100%",
           }}
-          data-testid="fake-child"
         />
+        <FakeElement ref={fakeChildRef} data-testid="fake-child" style={{ height: rowHeight, width: columnWidth }} />
+        <FakeElement
+          ref={fakeSpacingRef}
+          data-testid="fake-spacing"
+          style={{ height: rowSpacing, width: columnSpacing }}
+        />
+        {children}
       </InnerWrapper>
     </OuterWrapper>
   );
@@ -182,11 +299,15 @@ VirtualizedGrid.defaultProps = {
   columnSpacing: undefined,
   columnWidth: undefined,
   height: undefined,
+  maxRowPrintedCount: undefined,
+  minRowPrintedCount: undefined,
+  optimized: undefined,
+  rowPrintedCount: undefined,
   rowSpacing: undefined,
   spacing: undefined,
   style: undefined,
   width: undefined,
 };
 
-export type { VirtualizedGridProps };
+export type { VirtualizedGridChildProps, VirtualizedGridProps };
 export default VirtualizedGrid;
