@@ -3,7 +3,7 @@
     "browser": true,
     "es2021": true
   },
-  "extends": ["airbnb", "airbnb/hooks", "airbnb-typescript", "plugin:import/recommended", "prettier"],
+  "extends": ["airbnb", "airbnb/hooks", "airbnb-typescript", "prettier", "plugin:import/recommended"],
   "parserOptions": {
     "ecmaVersion": "latest",
     "project": ["./tsconfig.json"],

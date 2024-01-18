@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { CSSProperties, FC, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 interface VirtualizedGridChildProps {
   index: number;
@@ -41,7 +42,7 @@ interface VirtualizedGridProps {
   /**
    * Reduce number of loads.
    */
-  optimized?: boolean;
+  performance?: boolean;
   /**
    * Number of rows.
    */
@@ -102,7 +103,7 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   height,
   maxRowPrintedCount,
   minRowPrintedCount,
-  optimized,
+  performance,
   rowHeight,
   rowPrintedCount,
   rowSpacing: rawRowSpacing,
@@ -153,20 +154,23 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
     return [...Array(endingY - startingY)].flatMap((_valueY, indexY) =>
       [...Array(endingX - startingX)].map((_valueX, indexX) => {
         const index = (startingY + indexY) * columnCount + (startingX + indexX);
-        return (
-          <ChildWrapper
-            key={index}
-            data-testid={`child-wrapper-${index}`}
-            style={{
-              height: calculatedRowHeight,
-              left: getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing),
-              top: getRow(index) * (calculatedRowHeight + calculatedRowSpacing),
-              width: calculatedColumnWidth,
-            }}
-          >
-            {index < size && <Child index={index} />}
-          </ChildWrapper>
-        );
+        if (index < size) {
+          return (
+            <ChildWrapper
+              key={uuidv4()}
+              data-testid={`child-wrapper-${index}`}
+              style={{
+                height: calculatedRowHeight,
+                left: getColumn(index) * (calculatedColumnWidth + calculatedColumnSpacing),
+                top: getRow(index) * (calculatedRowHeight + calculatedRowSpacing),
+                width: calculatedColumnWidth,
+              }}
+            >
+              <Child index={index} />
+            </ChildWrapper>
+          );
+        }
+        return null;
       }),
     );
   }, [
@@ -186,61 +190,66 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   ]);
 
   const load = useCallback(() => {
-    const wrapperRefCurrent = wrapperRef.current as HTMLDivElement;
-    const fakeChildRefCurrent = fakeChildRef.current as HTMLDivElement;
-    const fakeSpacingRefCurrent = fakeSpacingRef.current as HTMLDivElement;
-    const newCalculatedWrapperHeight = wrapperRefCurrent.clientHeight;
-    const newCalculatedWrapperWidth = wrapperRefCurrent.clientWidth;
-    const newCalculatedRowSpacing = fakeSpacingRefCurrent.clientHeight;
-    const newCalculatedColumnSpacing = fakeSpacingRefCurrent.clientWidth;
-    const newCalculatedRowHeight = fakeChildRefCurrent.clientHeight;
-    const newCalculatedColumnWidth = columnWidth
-      ? fakeChildRefCurrent.clientWidth
-      : (newCalculatedWrapperWidth - (columnCount - 1) * newCalculatedColumnSpacing) / columnCount;
-    if (!wasErrorShown.current && (!newCalculatedWrapperHeight || !newCalculatedWrapperWidth)) {
-      console.error(new Error("Invalid dimensions: Height and/or width are 0."));
-      wasErrorShown.current = true;
+    const wrapperRefCurrent = wrapperRef.current;
+    const fakeChildRefCurrent = fakeChildRef.current;
+    const fakeSpacingRefCurrent = fakeSpacingRef.current;
+    if (wrapperRefCurrent && fakeChildRefCurrent && fakeSpacingRefCurrent) {
+      const newCalculatedWrapperHeight = wrapperRefCurrent.clientHeight;
+      const newCalculatedWrapperWidth = wrapperRefCurrent.clientWidth;
+      const newCalculatedRowSpacing = fakeSpacingRefCurrent.clientHeight;
+      const newCalculatedColumnSpacing = fakeSpacingRefCurrent.clientWidth;
+      const newCalculatedRowHeight = fakeChildRefCurrent.clientHeight;
+      const newCalculatedColumnWidth = columnWidth
+        ? fakeChildRefCurrent.clientWidth
+        : (newCalculatedWrapperWidth - (columnCount - 1) * newCalculatedColumnSpacing) / columnCount;
+      if (!wasErrorShown.current && (!newCalculatedWrapperHeight || !newCalculatedWrapperWidth)) {
+        console.error(new Error("Invalid dimensions: Height and/or width are 0."));
+        wasErrorShown.current = true;
+      }
+      setCalculatedWrapperHeight(newCalculatedWrapperHeight);
+      setCalculatedWrapperWidth(newCalculatedWrapperWidth);
+      setCalculatedRowHeight(newCalculatedRowHeight);
+      setCalculatedColumnWidth(newCalculatedColumnWidth);
+      setCalculatedRowSpacing(newCalculatedRowSpacing);
+      setCalculatedColumnSpacing(newCalculatedColumnSpacing);
+      setScrollTop(wrapperRefCurrent.scrollTop);
+      setScrollLeft(wrapperRefCurrent.scrollLeft);
+      setOverflowY(
+        newCalculatedRowHeight * rowCount + newCalculatedRowSpacing * (rowCount - 1) <= newCalculatedWrapperHeight
+          ? "hidden"
+          : undefined,
+      );
+      setOverflowX(
+        !columnWidth ||
+          newCalculatedColumnWidth * columnCount + newCalculatedColumnSpacing * (columnCount - 1) <=
+            newCalculatedWrapperWidth
+          ? "hidden"
+          : undefined,
+      );
     }
-    setCalculatedWrapperHeight(newCalculatedWrapperHeight);
-    setCalculatedWrapperWidth(newCalculatedWrapperWidth);
-    setCalculatedRowHeight(newCalculatedRowHeight);
-    setCalculatedColumnWidth(newCalculatedColumnWidth);
-    setCalculatedRowSpacing(newCalculatedRowSpacing);
-    setCalculatedColumnSpacing(newCalculatedColumnSpacing);
-    setScrollTop(wrapperRefCurrent.scrollTop);
-    setScrollLeft(wrapperRefCurrent.scrollLeft);
-    setOverflowY(
-      newCalculatedRowHeight * rowCount + newCalculatedRowSpacing * (rowCount - 1) <= newCalculatedWrapperHeight
-        ? "hidden"
-        : undefined,
-    );
-    setOverflowX(
-      !columnWidth ||
-        newCalculatedColumnWidth * columnCount + newCalculatedColumnSpacing * (columnCount - 1) <=
-          newCalculatedWrapperWidth
-        ? "hidden"
-        : undefined,
-    );
   }, [columnCount, columnWidth, rowCount]);
 
   const loadOptimized = useCallback(() => {
-    if (optimized) {
+    if (performance) {
       startTransition(load);
     } else {
       load();
     }
-  }, [load, optimized]);
+  }, [load, performance]);
 
   const resizeObserver = useMemo(() => new ResizeObserver(loadOptimized), [loadOptimized]);
 
   useEffect(() => {
-    const wrapperRefCurrent: HTMLDivElement = wrapperRef.current as HTMLDivElement;
-    wrapperRefCurrent.addEventListener("scroll", loadOptimized);
-    resizeObserver.observe(wrapperRefCurrent);
-    return () => {
-      wrapperRefCurrent.removeEventListener("scroll", loadOptimized);
-      resizeObserver.unobserve(wrapperRefCurrent);
-    };
+    const wrapperRefCurrent = wrapperRef.current;
+    if (wrapperRefCurrent) {
+      wrapperRefCurrent.addEventListener("scroll", loadOptimized);
+      resizeObserver.observe(wrapperRefCurrent);
+      return () => {
+        wrapperRefCurrent.removeEventListener("scroll", loadOptimized);
+        resizeObserver.unobserve(wrapperRefCurrent);
+      };
+    }
+    return undefined;
   }, [loadOptimized, resizeObserver]);
 
   useEffect(() => {
@@ -248,8 +257,10 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   }, [loadOptimized]);
 
   useEffect(() => {
-    const wrapperRefCurrent = wrapperRef.current as HTMLDivElement;
-    wrapperRefCurrent.scrollTop = 0;
+    const wrapperRefCurrent = wrapperRef.current;
+    if (wrapperRefCurrent) {
+      wrapperRefCurrent.scrollTop = 0;
+    }
   }, [Child, size]);
 
   return (
@@ -301,7 +312,7 @@ VirtualizedGrid.defaultProps = {
   height: undefined,
   maxRowPrintedCount: undefined,
   minRowPrintedCount: undefined,
-  optimized: undefined,
+  performance: undefined,
   rowPrintedCount: undefined,
   rowSpacing: undefined,
   spacing: undefined,

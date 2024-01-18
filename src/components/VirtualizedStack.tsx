@@ -26,7 +26,7 @@ interface VirtualizedStackProps {
   /**
    * Reduce number of loads.
    */
-  optimized?: boolean;
+  performance?: boolean;
   /**
    * The height of rows.
    */
@@ -59,7 +59,7 @@ const VirtualizedStack: FC<VirtualizedStackProps> = ({
   height,
   maxRowPrintedCount,
   minRowPrintedCount,
-  optimized,
+  performance,
   rowHeight,
   rowPrintedCount,
   size,
@@ -74,7 +74,7 @@ const VirtualizedStack: FC<VirtualizedStackProps> = ({
     height={height}
     maxRowPrintedCount={maxRowPrintedCount}
     minRowPrintedCount={minRowPrintedCount}
-    optimized={optimized}
+    performance={performance}
     rowHeight={rowHeight}
     rowPrintedCount={rowPrintedCount}
     size={size}
@@ -89,7 +89,7 @@ VirtualizedStack.defaultProps = {
   height: undefined,
   maxRowPrintedCount: undefined,
   minRowPrintedCount: undefined,
-  optimized: undefined,
+  performance: undefined,
   rowPrintedCount: undefined,
   spacing: undefined,
   style: undefined,
