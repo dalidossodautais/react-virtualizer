@@ -1,6 +1,6 @@
 {
   "name": "@dalidossodautais/react-virtualized",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "dalidossodautais",
   "license": "ISC",
   "description": "React components for virtualization handling.",

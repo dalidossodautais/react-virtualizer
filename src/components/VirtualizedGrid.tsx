@@ -42,6 +42,10 @@ interface VirtualizedGridProps {
   /**
    * Reduce number of loads.
    */
+  noWarning?: boolean;
+  /**
+   * Hide warning logs.
+   */
   performance?: boolean;
   /**
    * Number of rows.
@@ -73,10 +77,7 @@ interface VirtualizedGridProps {
   width?: string;
 }
 
-const OuterWrapper = styled("div")({
-  height: "100%",
-  width: "100%",
-});
+const OuterWrapper = styled("div")();
 
 const InnerWrapper = styled("div")({
   height: "100%",
@@ -103,6 +104,7 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   height,
   maxRowPrintedCount,
   minRowPrintedCount,
+  noWarning,
   performance,
   rowHeight,
   rowPrintedCount,
@@ -122,14 +124,14 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
 
   const [overflowY, setOverflowY] = useState<"hidden" | undefined>(undefined);
   const [overflowX, setOverflowX] = useState<"hidden" | undefined>(undefined);
-  const [calculatedWrapperHeight, setCalculatedWrapperHeight] = useState<number>(0);
-  const [calculatedWrapperWidth, setCalculatedWrapperWidth] = useState<number>(0);
   const [calculatedRowHeight, setCalculatedRowHeight] = useState<number>(0);
   const [calculatedColumnWidth, setCalculatedColumnWidth] = useState<number>(0);
   const [calculatedRowSpacing, setCalculatedRowSpacing] = useState<number>(0);
   const [calculatedColumnSpacing, setCalculatedColumnSpacing] = useState<number>(0);
-  const [scrollTop, setScrollTop] = useState<number>(0);
-  const [scrollLeft, setScrollLeft] = useState<number>(0);
+  const [startingX, setStartingX] = useState<number>(0);
+  const [startingY, setStartingY] = useState<number>(0);
+  const [endingX, setEndingX] = useState<number>(0);
+  const [endingY, setEndingY] = useState<number>(0);
 
   const rowCount = useMemo(() => Math.ceil(size / columnCount), [columnCount, size]);
 
@@ -140,17 +142,9 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
   const getRow = useCallback((index: number) => Math.floor(index / columnCount), [columnCount]);
 
   const children = useMemo(() => {
-    if (!calculatedWrapperHeight || !calculatedWrapperWidth) {
+    if (!(endingY - startingY) || !(endingX - startingX)) {
       return null;
     }
-    const startingX = Math.floor(
-      (scrollLeft + calculatedColumnSpacing) / (calculatedColumnWidth + calculatedColumnSpacing),
-    );
-    const startingY = Math.floor((scrollTop + calculatedRowSpacing) / (calculatedRowHeight + calculatedRowSpacing));
-    const endingX = Math.ceil(
-      (scrollLeft + calculatedWrapperWidth) / (calculatedColumnWidth + calculatedColumnSpacing),
-    );
-    const endingY = Math.ceil((scrollTop + calculatedWrapperHeight) / (calculatedRowHeight + calculatedRowSpacing));
     return [...Array(endingY - startingY)].flatMap((_valueY, indexY) =>
       [...Array(endingX - startingX)].map((_valueX, indexX) => {
         const index = (startingY + indexY) * columnCount + (startingX + indexX);
@@ -174,19 +168,19 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
       }),
     );
   }, [
+    Child,
     calculatedColumnSpacing,
     calculatedColumnWidth,
     calculatedRowHeight,
     calculatedRowSpacing,
-    calculatedWrapperHeight,
-    calculatedWrapperWidth,
     columnCount,
-    Child,
+    endingX,
+    endingY,
     getColumn,
     getRow,
-    scrollLeft,
-    scrollTop,
     size,
+    startingX,
+    startingY,
   ]);
 
   const load = useCallback(() => {
@@ -202,18 +196,14 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
       const newCalculatedColumnWidth = columnWidth
         ? fakeChildRefCurrent.clientWidth
         : (newCalculatedWrapperWidth - (columnCount - 1) * newCalculatedColumnSpacing) / columnCount;
-      if (!wasErrorShown.current && (!newCalculatedWrapperHeight || !newCalculatedWrapperWidth)) {
-        console.error(new Error("Invalid dimensions: Height and/or width are 0."));
+      if (!noWarning && !wasErrorShown.current && (!newCalculatedWrapperHeight || !newCalculatedWrapperWidth)) {
+        console.warn(new Error("Invalid dimensions: Height and/or width are 0."));
         wasErrorShown.current = true;
       }
-      setCalculatedWrapperHeight(newCalculatedWrapperHeight);
-      setCalculatedWrapperWidth(newCalculatedWrapperWidth);
       setCalculatedRowHeight(newCalculatedRowHeight);
       setCalculatedColumnWidth(newCalculatedColumnWidth);
       setCalculatedRowSpacing(newCalculatedRowSpacing);
       setCalculatedColumnSpacing(newCalculatedColumnSpacing);
-      setScrollTop(wrapperRefCurrent.scrollTop);
-      setScrollLeft(wrapperRefCurrent.scrollLeft);
       setOverflowY(
         newCalculatedRowHeight * rowCount + newCalculatedRowSpacing * (rowCount - 1) <= newCalculatedWrapperHeight
           ? "hidden"
@@ -226,8 +216,32 @@ const VirtualizedGrid: FC<VirtualizedGridProps> = ({
           ? "hidden"
           : undefined,
       );
+
+      setStartingX(
+        Math.floor(
+          (wrapperRefCurrent.scrollLeft + calculatedColumnSpacing) /
+            (newCalculatedColumnWidth + calculatedColumnSpacing),
+        ),
+      );
+      setStartingY(
+        Math.floor(
+          (wrapperRefCurrent.scrollTop + newCalculatedRowSpacing) / (newCalculatedRowHeight + newCalculatedRowSpacing),
+        ),
+      );
+      setEndingX(
+        Math.ceil(
+          (wrapperRefCurrent.scrollLeft + newCalculatedWrapperWidth) /
+            (newCalculatedColumnWidth + newCalculatedColumnSpacing),
+        ),
+      );
+      setEndingY(
+        Math.ceil(
+          (wrapperRefCurrent.scrollTop + newCalculatedWrapperHeight) /
+            (newCalculatedRowHeight + newCalculatedRowSpacing),
+        ),
+      );
     }
-  }, [columnCount, columnWidth, rowCount]);
+  }, [calculatedColumnSpacing, columnCount, columnWidth, noWarning, rowCount]);
 
   const loadOptimized = useCallback(() => {
     if (performance) {
@@ -312,7 +326,8 @@ VirtualizedGrid.defaultProps = {
   height: undefined,
   maxRowPrintedCount: undefined,
   minRowPrintedCount: undefined,
-  performance: undefined,
+  noWarning: false,
+  performance: false,
   rowPrintedCount: undefined,
   rowSpacing: undefined,
   spacing: undefined,

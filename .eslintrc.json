@@ -19,9 +19,10 @@
         "newlines-between": "always"
       }
     ],
-    "no-console": ["error", { "allow": ["error"] }],
+    "no-console": ["error", { "allow": ["error", "warn"] }],
     "react/function-component-definition": ["off"],
     "react/jsx-sort-props": ["error"],
+    "react/jsx-props-no-spreading": ["off"],
     "react/react-in-jsx-scope": ["off"],
     "sort-keys-fix/sort-keys-fix": ["error"]
   }
