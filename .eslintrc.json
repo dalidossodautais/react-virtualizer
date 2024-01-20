@@ -3,14 +3,22 @@
     "browser": true,
     "es2021": true
   },
-  "extends": ["airbnb", "airbnb/hooks", "airbnb-typescript", "prettier", "plugin:import/recommended"],
+  "extends": [
+    "airbnb",
+    "airbnb/hooks",
+    "airbnb-typescript",
+    "prettier",
+    "plugin:import/recommended",
+    "plugin:sonarjs/recommended"
+  ],
   "parserOptions": {
     "ecmaVersion": "latest",
     "project": ["./tsconfig.json"],
     "sourceType": "module"
   },
-  "plugins": ["@stylistic", "prettier/recommended", "sort-keys-fix"],
+  "plugins": ["@stylistic", "prettier/recommended", "sonarjs", "sort-keys-fix"],
   "rules": {
+    "complexity": ["error"],
     "import/order": [
       "error",
       {
